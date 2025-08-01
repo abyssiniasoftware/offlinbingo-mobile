@@ -9,6 +9,7 @@ class AppTheme {
     brightness: Brightness.light,
   );
 
+
   static ThemeData darkTheme = ThemeData(
     primarySwatch: Colors.deepPurple,
     scaffoldBackgroundColor: Colors.black,
