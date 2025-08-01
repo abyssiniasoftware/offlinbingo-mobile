@@ -76,18 +76,18 @@ class TopControlsBar extends StatelessWidget {
             },
             width: buttonWidth,
           ),
-          // _iconTextButton(
-          //   icon: Icons.pattern,
-          //   label: "shaffle",
-          //   color: Colors.deepOrangeAccent,
-          //   onPressed: () {
-          //     Navigator.push(
-          //       context,
-          //       MaterialPageRoute(builder: (_) => const BingoShuffleGridPage()),
-          //     );
-          //   },
-          //   width: buttonWidth,
-          // ),
+          _iconTextButton(
+            icon: Icons.pattern,
+            label: "shaffle",
+            color: Colors.deepOrangeAccent,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BingoShuffleGridPage()),
+              );
+            },
+            width: buttonWidth,
+          ),
           _iconTextButton(
             icon: Icons.search,
             label: "Check",

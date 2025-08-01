@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class BingoGrid extends StatelessWidget {
   final List<int> selectedNumbers;
-  final bool useRowLayout; // 🔁 switch between row or column
+  final bool useRowLayout;
   final bool isPortrait;
 
   const BingoGrid({
@@ -30,7 +30,7 @@ class BingoGrid extends StatelessWidget {
                     // BINGO label on left
                     return Container(
                       width: 24,
-                      height: 30,
+                      height: 24,
                       alignment: Alignment.center,
                       margin: const EdgeInsets.all(1),
                       decoration: BoxDecoration(
