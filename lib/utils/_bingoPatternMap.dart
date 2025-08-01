@@ -1,0 +1,33 @@
+
+  import 'package:offlinebingo/config/wining_pattern.dart';
+
+final Map<String, List<List<String>>> bingoPatternMap = {
+    "Rows": BingoPatterns.row,
+    "Columns": BingoPatterns.column,
+    "Diagonals": BingoPatterns.diagonal,
+    "Four Corners": BingoPatterns.fourCorners,
+    "One Line": BingoPatterns.oneLine,
+    "Inner Corners": BingoPatterns.innerCorners,
+    "Inner or Four Corners": BingoPatterns.innerOrFourCorners,
+    "L Pattern": BingoPatterns.lPattern,
+    "Reverse L": BingoPatterns.reverseL,
+    "T Pattern": BingoPatterns.tPattern,
+    "Reverse T": BingoPatterns.reverseT,
+    "Plus": BingoPatterns.plus,
+    "Square": BingoPatterns.square,
+    "X Pattern": BingoPatterns.xPattern,
+    "U Pattern": BingoPatterns.uPattern,
+    "Cross": BingoPatterns.cross,
+    "Diamond": BingoPatterns.diamond,
+    "Postage Stamp": BingoPatterns.postageStamp,
+    "Big Diamond": BingoPatterns.bigDiamond,
+    "Letter H": BingoPatterns.letterH,
+    "Letter C": BingoPatterns.letterC,
+    "Letter E": BingoPatterns.letterE,
+    "Smiley Face": BingoPatterns.smileyFace,
+    "Triangle": BingoPatterns.triangle,
+    "Zigzag": BingoPatterns.zigzag,
+    "Crescent": BingoPatterns.crescent,
+    "Lightning Bolt": BingoPatterns.lightningBolt,
+    "Any Two Line": BingoPatterns.anyTwoLine,
+  };
