@@ -44,6 +44,9 @@ class _BingoHomePageState extends State<BingoHomePage> {
   final TextEditingController _cardNumberController = TextEditingController();
 
   String selectedLanguageCode = 'am';
+  // Add this field in your _BingoHomePageState:
+  int _drawIntervalSeconds =
+      2; // default 2 seconds; you can make this configurable in UI
 
   Future<void> playBingoSound(int number) async {
     final prefs = await SharedPreferences.getInstance();
@@ -123,6 +126,35 @@ class _BingoHomePageState extends State<BingoHomePage> {
     }
   }
 
+  // void startGenerating() async {
+  //   setState(() {
+  //     isPaused = false;
+  //     hasStarted = true; // Disable "Start" button
+  //   });
+
+  //   while (allNumbers.isNotEmpty && !isPaused) {
+  //     final number = allNumbers.removeAt(0);
+
+  //     setState(() {
+  //       generatedNumbers.add(number);
+  //     });
+
+  //     await playBingoSound(number);
+
+  //     if (isPaused) break;
+
+  //     await Future.delayed(const Duration(milliseconds: 300));
+  //     if (isPaused) break;
+  //   }
+
+  //   // Game has ended
+  //   if (!isPaused && allNumbers.isEmpty) {
+  //     setState(() {
+  //       hasStarted = false; // Re-enable "Start" button
+  //     });
+  //   }
+  // }
+  // Modify startGenerating like this:
   void startGenerating() async {
     setState(() {
       isPaused = false;
@@ -140,7 +172,9 @@ class _BingoHomePageState extends State<BingoHomePage> {
 
       if (isPaused) break;
 
-      await Future.delayed(const Duration(milliseconds: 300));
+      // Wait for the configured interval before drawing next number
+      await Future.delayed(Duration(seconds: _drawIntervalSeconds));
+
       if (isPaused) break;
     }
 
@@ -282,6 +316,33 @@ class _BingoHomePageState extends State<BingoHomePage> {
                         _playbackSpeed = value;
                         _audioPlayer.setSpeed(_playbackSpeed);
                       });
+                    },
+                  ),
+                  Text("durations"),
+                  Slider(
+                    value: _drawIntervalSeconds.toDouble(),
+                    min: 1,
+                    max: 10,
+                    divisions: 9,
+                    label: '$_drawIntervalSeconds seconds',
+                    onChanged: (value) async {
+                      setState(() {
+                        _drawIntervalSeconds = value.toInt();
+                      });
+
+                      // If game running, restart the number drawing with new duration:
+                      if (!isPaused) {
+                        // Pause current loop
+                        setState(() {
+                          isPaused = true;
+                        });
+
+                        // Slight delay to let loop exit
+                        await Future.delayed(const Duration(milliseconds: 100));
+
+                        // Restart loop with new duration
+                        startGenerating();
+                      }
                     },
                   ),
                 ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:offlinebingo/config/wining_pattern.dart';
+import 'package:offlinebingo/utils/_bingoPatternMap.dart';
 import 'package:offlinebingo/utils/_convertCardToGride.dart';
 import 'package:offlinebingo/utils/_getPatternLinesByName.dart';
 import 'package:offlinebingo/utils/_getLangLoseandwinSoundPath.dart';
@@ -122,7 +123,8 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
       return;
     }
 
-    final patternLines = GetPatternLinesByName(savedPatternName);
+    // final patternLines = GetPatternLinesByName(savedPatternName);
+    final patternLines = getCombinedPatternLines(savedPatternName);
 
     if (patternLines == null) {
       setState(() {
@@ -242,7 +244,9 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
       return;
     }
 
-    final patternLines = GetPatternLinesByName(savedPatternName);
+    // final patternLines = GetPatternLinesByName(savedPatternName);
+    final patternLines = getCombinedPatternLines(savedPatternName);
+
     if (patternLines == null) {
       setState(() {
         _foundCard = card;
@@ -281,10 +285,10 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
     }
 
     // If not winner, add to blacklist AFTER showing once
-    if (!isWinner) {
-      _blacklist.add(input);
-      await prefs.setStringList("blacklisted_card_ids", _blacklist);
-    }
+    // if (!isWinner) {
+    //   _blacklist.add(input);
+    //   await prefs.setStringList("blacklisted_card_ids", _blacklist);
+    // }
 
     _isBlacklisted = false; // because we're still showing this attempt
   }
