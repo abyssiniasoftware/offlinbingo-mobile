@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:offlinebingo/config/languageLists.dart';
 import 'package:offlinebingo/pages/GamePage.dart';
 import 'package:offlinebingo/providers/autho_provider.dart';
 import 'package:offlinebingo/providers/game_provider.dart';
+import 'package:offlinebingo/widgets/_appdrawer.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -112,6 +114,11 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
 
       await prefs.setDouble('package', newBalance);
       // Navigate to BingoHomePage only on success
+
+      await prefs.remove("blacklisted_card_ids");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("🧹 Blacklist cleared.")));
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -155,21 +162,12 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
     super.initState();
     _loadBalance();
     _loadLanguage();
+    Future.microtask(() {
+      Provider.of<GameProvider>(context, listen: false).fetchCardNumbers();
+    });
   }
 
   String selectedLanguageCode = 'am';
-
-  final Map<String, String> languageOptions = {
-    'en': 'E Voice',
-    'am': 'A voice',
-    'or': 'R voice',
-    'on': 'O voice',
-    'ti': 't voice',
-    'so': 'F voice',
-    'g': 'G Voice',
-    'r': 'R Voice',
-    'z': 'Z Voice',
-  };
 
   Future<void> _selectLanguage() async {
     final newLangCode = await showDialog<String>(
@@ -218,53 +216,60 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF1E1E2E),
+      backgroundColor: const Color(0xFF1E1E2E),
+
+      drawer: AppDrawer(),
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(90),
+        preferredSize: const Size.fromHeight(90),
         child: AppBar(
           backgroundColor: const Color(0xFF1E1E2E),
           elevation: 2,
-          shape: RoundedRectangleBorder(
+          foregroundColor: Colors.white,
+          automaticallyImplyLeading: true,
+          shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
             side: BorderSide(color: Colors.white10, width: 1),
           ),
-          flexibleSpace: Padding(
-            // padding: const EdgeInsets.all() ,
-            padding: const EdgeInsets.fromLTRB(16, 40, 16, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Control buttons
-                Row(
-                  children: [
-                    _buildSmallButton(
-                      label: 'Start',
-                      color: Colors.green,
-                      onPressed: startGame,
-                    ),
-                    SizedBox(width: 8),
-                    _buildSmallButton(
-                      label: 'Reset',
-                      color: Colors.red,
-                      onPressed: () => setState(() => selectedNumbers.clear()),
-                    ),
-                  ],
-                ),
+          flexibleSpace: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  // Left side empty (Drawer icon auto handled)
+                  const Spacer(),
 
-
-                // Language selector as button
-                _buildSmallButton(
-                  label: languageOptions[selectedLanguageCode] ?? 'English',
-                  color: Colors.blueGrey,
-                  icon: Icons.language,
-                  onPressed: _selectLanguage,
-                ),
-              ],
+                  // Right-aligned buttons
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildSmallButton(
+                        label: 'Start',
+                        color: Colors.green,
+                        onPressed: startGame,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildSmallButton(
+                        label: 'Reset',
+                        color: Colors.red,
+                        onPressed: () =>
+                            setState(() => selectedNumbers.clear()),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildSmallButton(
+                        label:
+                            languageOptions[selectedLanguageCode] ?? 'English',
+                        color: Colors.blueGrey,
+                        icon: Icons.language,
+                        onPressed: _selectLanguage,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-
       body: Column(
         children: [
           buildTopControls(),
@@ -280,12 +285,13 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // User Info
                   Row(
                     children: [
                       const Icon(Icons.person, color: Colors.white70, size: 20),
                       const SizedBox(width: 6),
                       Text(
-                        '$username',
+                        username,
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -293,6 +299,8 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
                       ),
                     ],
                   ),
+
+                  // Balance + Refresh
                   Row(
                     children: [
                       const Icon(
@@ -311,7 +319,7 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
                       const SizedBox(width: 8),
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.amber.withOpacity(0.1),
+                          color: Colors.amber.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: IconButton(
@@ -322,18 +330,33 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
                           ),
                           tooltip: 'Refresh Balance',
                           onPressed: () async {
-                            if (balance > 20.0) {
+                            final scaffold = ScaffoldMessenger.of(context);
+                            try {
+                              scaffold.showSnackBar(
+                                const SnackBar(
+                                  content: Text("Refreshing..."),
+                                  duration: Duration(milliseconds: 800),
+                                ),
+                              );
+
                               final authProvider = Provider.of<AuthProvider>(
                                 context,
                                 listen: false,
                               );
+                              final gameProvider = Provider.of<GameProvider>(
+                                context,
+                                listen: false,
+                              );
+
                               await authProvider.autoLogin();
-                              _loadBalance();
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Balance is sufficient"),
-                                  duration: Duration(seconds: 2),
+                              _loadBalance(); // Refresh local balance
+                              await gameProvider
+                                  .fetchCardNumbers(); // Refresh cards
+                            } catch (e) {
+                              scaffold.showSnackBar(
+                                SnackBar(
+                                  content: Text("Error refreshing: $e"),
+                                  duration: const Duration(seconds: 2),
                                 ),
                               );
                             }
@@ -348,32 +371,65 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
           ),
 
           Expanded(
-            child: GridView.count(
-              padding: EdgeInsets.all(16),
-              crossAxisCount: 10,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              children: List.generate(80, (index) {
-                int number = index + 1;
-                bool isSelected = selectedNumbers.contains(number);
-                return GestureDetector(
-                  onTap: () => toggleNumber(number),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected ? Colors.green : Colors.grey[800],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '$number',
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
+            child: Consumer<GameProvider>(
+              builder: (context, gameProvider, _) {
+                final cardNumbers = gameProvider.cardNumbers;
+
+                if (cardNumbers.isEmpty) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                // cardNumbers should already be unique & sorted if provider is correct
+                return GridView.builder(
+                  padding: EdgeInsets.all(16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 10,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 1,
                   ),
+                  itemCount: cardNumbers.length,
+                  itemBuilder: (context, index) {
+                    final number = cardNumbers[index];
+                    final isSelected = selectedNumbers.contains(number);
+
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            selectedNumbers.remove(number);
+                          } else {
+                            selectedNumbers.add(number);
+                          }
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.amber : Colors.grey[800],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected
+                                ? Colors.yellowAccent
+                                : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$number',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isSelected ? Colors.black : Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 );
-              }),
+              },
             ),
           ),
-
           if (takenNumberMessage != null)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),

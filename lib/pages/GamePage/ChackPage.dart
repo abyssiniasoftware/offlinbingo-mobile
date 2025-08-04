@@ -4,7 +4,6 @@ import 'package:offlinebingo/config/wining_pattern.dart';
 import 'package:offlinebingo/utils/_convertCardToGride.dart';
 import 'package:offlinebingo/utils/_getPatternLinesByName.dart';
 import 'package:offlinebingo/utils/_getLangLoseandwinSoundPath.dart';
-import 'package:offlinebingo/widgets/_animatedWinnerDialog.dart';
 import 'package:offlinebingo/widgets/_patternGrid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,16 +30,28 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
   Map<String, dynamic>? _foundCard;
   String? _winningPatternName;
   int? _lastSearchedId;
+  List<String> _blacklist = [];
+  bool _isBlacklisted = false;
 
   // Get the saved pattern name from SharedPreferences
   Future<String?> _getSavedPatternName() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('selectedPattern'); // FIXED KEY!
+    return prefs.getString('selectedPattern');
+  }
+
+  // Load blacklist from SharedPreferences
+  Future<void> _loadBlacklist() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _blacklist = prefs.getStringList("blacklisted_card_ids") ?? [];
+    });
   }
 
   bool isPatternCompleted(List<String> pattern, Map<String, dynamic> card) {
-   
     for (final cell in pattern) {
+      // Skip the FREE center space
+      if (cell == "n3") continue;
+
       final number = card[cell];
       if (number == null || !widget.generatedNumbers.contains(number)) {
         return false;
@@ -49,12 +60,27 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
     return true;
   }
 
-
- 
-  Future<void> searchCard(String input) async {
+  Future<void> searchCard1(String input) async {
     final id = int.tryParse(input);
     if (id == null || id == _lastSearchedId) return;
     _lastSearchedId = id;
+
+    // Check blacklist first
+    if (!_blacklist.contains(input)) {
+      setState(() {
+        _foundCard = null;
+        _winningPatternName = null;
+        _isBlacklisted = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("🚫 This card is blacklisted due to previous loss."),
+        ),
+      );
+      return;
+    } else {
+      _isBlacklisted = false;
+    }
 
     if (!widget.selectedNumbers.contains(id)) {
       setState(() {
@@ -90,15 +116,14 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
         _foundCard = card;
         _winningPatternName = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(" No saved pattern found.")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("No saved pattern found.")));
       return;
     }
 
-    // Get the pattern lines for the saved pattern
     final patternLines = GetPatternLinesByName(savedPatternName);
-    String? _savedPatternName; // ✅ <-- Add this
+
     if (patternLines == null) {
       setState(() {
         _foundCard = card;
@@ -125,7 +150,7 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
       _winningPatternName = isWinner ? savedPatternName : null;
     });
 
-     final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
     final selectedLang =
         prefs.getString('selected_language')?.toLowerCase() ?? 'on';
 
@@ -140,10 +165,131 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
     } catch (e) {
       debugPrint("Audio error: $e");
     }
+
+    // If not winner, add to blacklist SharedPreferences
+    if (!isWinner) {
+      if (!_blacklist.contains(input)) {
+        _blacklist.add(input);
+        await prefs.setStringList("blacklisted_card_ids", _blacklist);
+      }
+      setState(() {
+        _isBlacklisted = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(" Not a winner. Added to blacklist.")),
+      );
+    } else {
+      setState(() {
+        _isBlacklisted = false;
+      });
+    }
   }
 
- 
-  String? _savedPatternName; // ✅ <-- Add this
+  Future<void> searchCard(String input) async {
+    final id = int.tryParse(input);
+    if (id == null || id == _lastSearchedId) return;
+    _lastSearchedId = id;
+
+    final prefs = await SharedPreferences.getInstance();
+    _blacklist = prefs.getStringList("blacklisted_card_ids") ?? [];
+
+    if (_blacklist.contains(input)) {
+      setState(() {
+        _foundCard = null;
+        _winningPatternName = null;
+        _isBlacklisted = true;
+      });
+      return;
+    } else {
+      setState(() {
+        _isBlacklisted = false;
+      });
+    }
+    // Check if card exists in selectedNumbers
+    if (!widget.selectedNumbers.contains(id)) {
+      setState(() {
+        _foundCard = null;
+        _winningPatternName = null;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("❌ Card number not found.")));
+      return;
+    }
+
+    final card = widget.cards.firstWhere(
+      (c) => c['cardId'] == id,
+      orElse: () => {},
+    );
+
+    if (card.isEmpty) {
+      setState(() {
+        _foundCard = null;
+        _winningPatternName = null;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("❌ Card data not found.")));
+      return;
+    }
+
+    final savedPatternName = await _getSavedPatternName();
+    if (savedPatternName == null) {
+      setState(() {
+        _foundCard = card;
+        _winningPatternName = null;
+      });
+      return;
+    }
+
+    final patternLines = GetPatternLinesByName(savedPatternName);
+    if (patternLines == null) {
+      setState(() {
+        _foundCard = card;
+        _winningPatternName = null;
+      });
+      return;
+    }
+
+    // Check winning condition
+    bool isWinner = false;
+    for (final line in patternLines) {
+      if (isPatternCompleted(line, card)) {
+        isWinner = true;
+        break;
+      }
+    }
+
+    setState(() {
+      _foundCard = card;
+      _winningPatternName = isWinner ? savedPatternName : null;
+    });
+
+    // Play sound
+    final selectedLang =
+        prefs.getString('selected_language')?.toLowerCase() ?? 'on';
+    final sound = isWinner
+        ? getLangWinnerSoundPath(selectedLang)
+        : getLangLoseSoundPath(selectedLang);
+
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.setAsset(sound);
+      _audioPlayer.play();
+    } catch (e) {
+      debugPrint("Audio error: $e");
+    }
+
+    // If not winner, add to blacklist AFTER showing once
+    if (!isWinner) {
+      _blacklist.add(input);
+      await prefs.setStringList("blacklisted_card_ids", _blacklist);
+    }
+
+    _isBlacklisted = false; // because we're still showing this attempt
+  }
+
+  String? _savedPatternName;
 
   @override
   void dispose() {
@@ -155,8 +301,8 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
   @override
   void initState() {
     super.initState();
-    _getSavedPatternName();
     _loadSavedPattern();
+    _loadBlacklist();
   }
 
   void _loadSavedPattern() async {
@@ -170,7 +316,7 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
   Widget build(BuildContext context) {
     final grid = _foundCard != null ? convertCardToGrid(_foundCard!) : null;
     final screenWidth = MediaQuery.of(context).size.width;
-    final gridWidth = screenWidth * 0.9; 
+    final gridWidth = screenWidth * 0.9;
 
     return Scaffold(
       backgroundColor: const Color(0xFF1E1E2E),
@@ -208,7 +354,7 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
                     Expanded(
                       child: Text(
                         _savedPatternName != null
-                            ? "  Pattern Name: ${_savedPatternName!}"
+                            ? "  Pattern Name: $_savedPatternName"
                             : "❗ No Pattern Selected",
                         style: const TextStyle(
                           color: Colors.amberAccent,
@@ -221,7 +367,6 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
                 ),
               ),
             ),
-
             TextField(
               controller: _controller,
               onChanged: searchCard,
@@ -238,7 +383,91 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
               ),
             ),
             const SizedBox(height: 24),
-            if (_foundCard != null && grid != null)
+
+            // Show blacklist message if blacklisted
+            if (_isBlacklisted)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.2),
+                  border: Border.all(color: Colors.redAccent),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.lock_outline,
+                      color: Colors.redAccent,
+                      size: 40,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "This card is blocked",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        List<String> blacklist =
+                            prefs.getStringList("blacklisted_card_ids") ?? [];
+
+                        final inputId = _controller.text.trim();
+                        if (blacklist.contains(inputId)) {
+                          blacklist.remove(inputId);
+                          await prefs.setStringList(
+                            "blacklisted_card_ids",
+                            blacklist,
+                          );
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "Card #$inputId removed from blacklist.",
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+
+                          setState(() {
+                            _isBlacklisted = false;
+                            _blacklist = blacklist;
+                          });
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.delete_forever,
+                        color: Colors.white,
+                      ),
+                      label: const Text(
+                        "Remove from Blacklist",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (_foundCard != null && grid != null)
               Container(
                 width: gridWidth,
                 padding: const EdgeInsets.all(16),
@@ -264,7 +493,7 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
                     const SizedBox(height: 20),
                     Text(
                       _winningPatternName != null
-                          ? " Winner - Pattern type\n${_winningPatternName!}"
+                          ? " Winner - Pattern type\n$_winningPatternName"
                           : "No Winner",
                       style: TextStyle(
                         fontSize: 18,
@@ -274,6 +503,64 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final inputId = _controller.text.trim();
+                        if (inputId.isEmpty) return;
+
+                        final prefs = await SharedPreferences.getInstance();
+                        List<String> blacklist =
+                            prefs.getStringList("blacklisted_card_ids") ?? [];
+
+                        if (!blacklist.contains(inputId)) {
+                          blacklist.add(inputId);
+                          await prefs.setStringList(
+                            "blacklisted_card_ids",
+                            blacklist,
+                          );
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "Card #$inputId added to blacklist.",
+                              ),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+
+                          setState(() {
+                            _isBlacklisted = true;
+                            _blacklist = blacklist;
+                          });
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Card is already in blacklist."),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.block, color: Colors.white),
+                      label: const Text(
+                        "Add to Blacklist",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),

@@ -10,18 +10,7 @@ class PatternGrid extends StatelessWidget {
     required this.generatedNumbers,
   });
 
-  // bool get isWinner {
-  //   for (int i = 0; i < pattern.length; i++) {
-  //     for (int j = 0; j < pattern[i].length; j++) {
-  //       if (i == 2 && j == 2) continue; // free space
-  //       int num = pattern[i][j];
-  //       if (num != 0 && !generatedNumbers.contains(num)) {
-  //         return false;
-  //       }
-  //     }
-  //   }
-  //   return true;
-  // }
+ 
   bool get isWinner {
   for (int i = 0; i < pattern.length; i++) {
     for (int j = 0; j < pattern[i].length; j++) {

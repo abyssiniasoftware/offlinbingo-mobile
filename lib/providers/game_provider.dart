@@ -5,6 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 class GameProvider extends ChangeNotifier {
+  List<int> _cardNumbers = []; // Store card numbers here
+  List<int> get cardNumbers => _cardNumbers;
+
   Future<bool> createGame({
     required int stakeAmount,
     required int numberOfPlayers,
@@ -32,7 +35,7 @@ class GameProvider extends ChangeNotifier {
       'cartela': 1,
       'gameId': 5,
     });
-    print("body_"+body);
+    print("body_" + body);
 
     try {
       debugPrint(" Sending POST request to: $url");
@@ -54,6 +57,87 @@ class GameProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint("❌ Exception during game creation: $e");
       return false;
+    }
+  }
+
+  Future<void> fetchCardNumbers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final userId = prefs.getString("userId");
+
+    if (token == null || userId == null) {
+      debugPrint("⚠️ Token or UserID missing");
+      return;
+    }
+
+    final url = Uri.parse(
+      'https://vpsdomain.katbingo.net/api/bingo-card/$userId/card-ids',
+    );
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token, // ✅ token in the headers now
+        },
+      );
+
+      debugPrint("📨 Card ID fetch status: ${response.statusCode}");
+      debugPrint("📥 Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _cardNumbers.clear();
+        notifyListeners();
+        _cardNumbers = data.map((e) => int.parse(e.toString())).toSet().toList()
+          ..sort(); // This will remove duplicates
+
+        notifyListeners();
+      } else {
+        debugPrint("❌ Failed to load cards: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("❌ Error getting card IDs: $e");
+    }
+  }
+
+  Map<String, dynamic> currentCard = {};
+  Future<void> fetchCardById(String cardId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final userId = prefs.getString("userId");
+
+    if (token == null || userId == null) {
+      debugPrint("⚠️ Token or UserID missing");
+      return;
+    }
+
+    final url = Uri.parse(
+      'https://vpsdomain.katbingo.net/api/bingo-card/$userId/$cardId',
+    );
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {'Content-Type': 'application/json', 'x-auth-token': token},
+      );
+
+      debugPrint("📨 Fetch card by ID status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        currentCard = data;
+        print("currentcard"+currentCard.toString());
+        notifyListeners();
+      } else {
+        currentCard = {};
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("❌ Error fetching card by ID: $e");
+      currentCard = {};
+      notifyListeners();
     }
   }
 }

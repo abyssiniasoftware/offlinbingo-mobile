@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart'; // Replace audioplayers
 import 'package:offlinebingo/config/card_pattern.dart';
+import 'package:offlinebingo/config/languageLists.dart';
 import 'package:offlinebingo/pages/GamePage/ChackPage.dart';
 
 import 'package:offlinebingo/providers/game_provider.dart';
-import 'package:offlinebingo/widgets/_patternShowPage.dart';
 import 'package:offlinebingo/widgets/_widgetBingoGrid.dart' show BingoGrid;
 import 'package:offlinebingo/widgets/_widgetWinnerBox.dart';
 import 'package:offlinebingo/widgets/_gameSceenAppbarTools.dart';
@@ -39,22 +39,28 @@ class _BingoHomePageState extends State<BingoHomePage> {
   bool _isLoading = false;
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool hasStarted = false;
+  double _playbackSpeed = 1.0;
 
   final TextEditingController _cardNumberController = TextEditingController();
-  
+
   String selectedLanguageCode = 'am';
 
-  final Map<String, String> languageOptions = {
-    'en': 'E Voice',
-    'am': 'A voice',
-    'or': 'R voice',
-    'on': 'O voice',
-    'ti': 't voice',
-    'so': 'F voice',
-    'g': 'G Voice',
-    'r': 'R Voice',
-    'z': 'Z Voice',
-  };
+  Future<void> playBingoSound(int number) async {
+    final prefs = await SharedPreferences.getInstance();
+    final selectedLang =
+        prefs.getString('selected_language')?.toLowerCase() ?? 'en';
+    final file = getSoundPath(number, selectedLang);
+
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.setAsset(file);
+      await _audioPlayer.setVolume(isMuted ? 0.0 : 1.0);
+      await _audioPlayer.setSpeed(_playbackSpeed); // Set the playback speed
+      await _audioPlayer.play();
+    } catch (e) {
+      print('Error playing sound for $selectedLang → $file: $e');
+    }
+  }
 
   Future<void> _onLanguageSelect() async {
     final newLangCode = await showDialog<String>(
@@ -80,14 +86,15 @@ class _BingoHomePageState extends State<BingoHomePage> {
       });
     }
   }
-   Future<void> _loadLanguage() async {
+
+  Future<void> _loadLanguage() async {
     final prefs = await SharedPreferences.getInstance();
     final langCode = prefs.getString('selected_language') ?? 'am';
     setState(() {
       selectedLanguageCode = langCode;
     });
   }
-  
+
   void _openSelectedNumbersPage({int? openCardNumber}) {
     Navigator.push(
       context,
@@ -169,7 +176,6 @@ class _BingoHomePageState extends State<BingoHomePage> {
     _loadLanguage();
   }
 
-  
   String getBingoPrefix(int number) {
     if (number >= 1 && number <= 15) return 'b';
     if (number >= 16 && number <= 30) return 'i';
@@ -205,10 +211,10 @@ class _BingoHomePageState extends State<BingoHomePage> {
         return 'assets/sounds/gvoice/${prefix.toUpperCase()}${number}.mp3';
 
       case 'r': // rvoice → rvoice/rb10.mp3 (assuming similar structure)
-        return 'assets/sounds/rvoice/r${prefix}${number}.mp3';
+        return 'assets/sounds/rvoice/${prefix}${number}.ogg';
 
       case 'z': // zvoice → zvoice/zb10.mp3 (assuming)
-        return 'assets/sounds/zvoice/z${prefix}${number}.mp3';
+        return 'assets/sounds/zvoice/${prefix}${number}.mp3';
 
       case 'en': // English → fnVoice/B-10.mp3
       default:
@@ -216,7 +222,7 @@ class _BingoHomePageState extends State<BingoHomePage> {
     }
   }
 
-  Future<void> playBingoSound(int number) async {
+  Future<void> playBingoSound1(int number) async {
     final prefs = await SharedPreferences.getInstance();
     final selectedLang =
         prefs.getString('selected_language')?.toLowerCase() ?? 'en';
@@ -247,6 +253,51 @@ class _BingoHomePageState extends State<BingoHomePage> {
   }
 
   bool _isPortable = false;
+  void _showSpeedDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        double tempSpeed = _playbackSpeed; // Use temp to avoid premature apply
+
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            return AlertDialog(
+              title: const Text('Playback Speed'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('${tempSpeed.toStringAsFixed(1)}x'),
+                  Slider(
+                    value: tempSpeed,
+                    min: 0.5,
+                    max: 2.0,
+                    divisions: 15,
+                    label: '${tempSpeed.toStringAsFixed(1)}x',
+                    onChanged: (value) {
+                      setLocalState(() {
+                        tempSpeed = value;
+                      });
+
+                      setState(() {
+                        _playbackSpeed = value;
+                        _audioPlayer.setSpeed(_playbackSpeed);
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -257,8 +308,8 @@ class _BingoHomePageState extends State<BingoHomePage> {
         backgroundColor: const Color(0xFF1E1E2E),
         title: const Text("ቢንጎ ጨዋታ", style: TextStyle(color: Colors.white)),
         actions: [
-           Text(languageOptions[selectedLanguageCode] ?? 'English',),
-           SizedBox(width: 10,),
+          Text(languageOptions[selectedLanguageCode] ?? 'English'),
+          SizedBox(width: 10),
           IconButton(
             icon: Icon(
               _isPortable ? Icons.screen_rotation : Icons.screen_lock_rotation,
@@ -271,16 +322,20 @@ class _BingoHomePageState extends State<BingoHomePage> {
             },
             tooltip: 'Toggle Portable Mode',
           ),
-           IconButton(
+          IconButton(
             icon: Icon(Icons.language),
             onPressed: () {
               setState(() {
-             _onLanguageSelect();
+                _onLanguageSelect();
               });
             },
             tooltip: 'choose language',
           ),
-          
+          IconButton(
+            icon: const Icon(Icons.speed),
+            tooltip: 'Adjust Speed',
+            onPressed: _showSpeedDialog,
+          ),
         ],
       ),
 
@@ -304,7 +359,6 @@ class _BingoHomePageState extends State<BingoHomePage> {
                           });
                           _audioPlayer.setVolume(isMuted ? 0.0 : 1.0);
                         },
-                      
 
                         onSearch: _openSelectedNumbersPage,
                       ),
