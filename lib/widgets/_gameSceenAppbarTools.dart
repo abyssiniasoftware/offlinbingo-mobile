@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:offlinebingo/pages/GamePage/PatternShowPage.dart';
 import 'package:offlinebingo/pages/GamePage/ShaffleBingoGridPage.dart';
 
-
 class TopControlsBar extends StatelessWidget {
   final bool isPaused;
   final bool isMuted;
@@ -10,6 +9,7 @@ class TopControlsBar extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback togglePauseResume;
   final VoidCallback toggleMute;
+  final VoidCallback onshuffle;
 
   final void Function({int? openCardNumber}) onSearch;
 
@@ -23,6 +23,7 @@ class TopControlsBar extends StatelessWidget {
     required this.toggleMute,
 
     required this.onSearch,
+    required this.onshuffle
   });
 
   @override
@@ -80,17 +81,18 @@ class TopControlsBar extends StatelessWidget {
             icon: Icons.shuffle,
             label: "shuffle",
             color: Colors.deepOrangeAccent,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const BingoShufflePage(
-                    useRowLayout: true,
-                    isPortrait: true,
-                  ),
-                ),
-              );
-            },
+            onPressed: onshuffle,
+            // onPressed: () {
+            //   Navigator.push(
+            //     context,
+            //     MaterialPageRoute(
+            //       builder: (_) => const BingoShufflePage(
+            //         useRowLayout: true,
+            //         isPortrait: true,
+            //       ),
+            //     ),
+            //   );
+            // },
             width: buttonWidth,
           ),
           _iconTextButton(

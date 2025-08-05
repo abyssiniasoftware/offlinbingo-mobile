@@ -5,6 +5,7 @@ import 'package:just_audio/just_audio.dart'; // Replace audioplayers
 import 'package:offlinebingo/config/card_pattern.dart';
 import 'package:offlinebingo/config/languageLists.dart';
 import 'package:offlinebingo/pages/GamePage/ChackPage.dart';
+import 'package:offlinebingo/pages/GamePage/ShaffleBingoGridPage.dart';
 
 import 'package:offlinebingo/providers/game_provider.dart';
 import 'package:offlinebingo/widgets/_widgetBingoGrid.dart' show BingoGrid;
@@ -41,12 +42,13 @@ class _BingoHomePageState extends State<BingoHomePage> {
   bool hasStarted = false;
   double _playbackSpeed = 1.0;
 
+  bool isshuffled = true;
+
   final TextEditingController _cardNumberController = TextEditingController();
 
   String selectedLanguageCode = 'am';
   // Add this field in your _BingoHomePageState:
-  int _drawIntervalSeconds =
-      2; // default 2 seconds; you can make this configurable in UI
+  double _drawIntervalSeconds = 2;
 
   Future<void> playBingoSound(int number) async {
     final prefs = await SharedPreferences.getInstance();
@@ -112,6 +114,12 @@ class _BingoHomePageState extends State<BingoHomePage> {
     );
   }
 
+  void _onShufflePage() {
+    setState(() {
+      isshuffled = !isshuffled;
+    });
+  }
+
   void togglePauseResume() async {
     setState(() {
       isPaused = !isPaused;
@@ -126,35 +134,6 @@ class _BingoHomePageState extends State<BingoHomePage> {
     }
   }
 
-  // void startGenerating() async {
-  //   setState(() {
-  //     isPaused = false;
-  //     hasStarted = true; // Disable "Start" button
-  //   });
-
-  //   while (allNumbers.isNotEmpty && !isPaused) {
-  //     final number = allNumbers.removeAt(0);
-
-  //     setState(() {
-  //       generatedNumbers.add(number);
-  //     });
-
-  //     await playBingoSound(number);
-
-  //     if (isPaused) break;
-
-  //     await Future.delayed(const Duration(milliseconds: 300));
-  //     if (isPaused) break;
-  //   }
-
-  //   // Game has ended
-  //   if (!isPaused && allNumbers.isEmpty) {
-  //     setState(() {
-  //       hasStarted = false; // Re-enable "Start" button
-  //     });
-  //   }
-  // }
-  // Modify startGenerating like this:
   void startGenerating() async {
     setState(() {
       isPaused = false;
@@ -172,8 +151,9 @@ class _BingoHomePageState extends State<BingoHomePage> {
 
       if (isPaused) break;
 
-      // Wait for the configured interval before drawing next number
-      await Future.delayed(Duration(seconds: _drawIntervalSeconds));
+      // Support decimal durations (e.g., 3.5 seconds = 3500 ms)
+      final durationInMilliseconds = (_drawIntervalSeconds * 1000).round();
+      await Future.delayed(Duration(milliseconds: durationInMilliseconds));
 
       if (isPaused) break;
     }
@@ -273,20 +253,8 @@ class _BingoHomePageState extends State<BingoHomePage> {
     }
   }
 
-  List<List<int>> convertCardToGridReversed(Map<String, dynamic> card) {
-    return List.generate(5, (index) {
-      // index goes from 0 to 4, corresponding to the rows in your original grid
-      return [
-        card['b${index + 1}'],
-        card['i${index + 1}'],
-        card['n${index + 1}'],
-        card['g${index + 1}'],
-        card['o${index + 1}'],
-      ];
-    });
-  }
-
   bool _isPortable = false;
+
   void _showSpeedDialog() {
     showDialog(
       context: context,
@@ -320,29 +288,15 @@ class _BingoHomePageState extends State<BingoHomePage> {
                   ),
                   Text("durations"),
                   Slider(
-                    value: _drawIntervalSeconds.toDouble(),
-                    min: 1,
-                    max: 10,
-                    divisions: 9,
-                    label: '$_drawIntervalSeconds seconds',
-                    onChanged: (value) async {
+                    value: _drawIntervalSeconds,
+                    min: 0.5,
+                    max: 10.0,
+                    divisions: 19, // for 0.5 step increments
+                    label: '${_drawIntervalSeconds.toStringAsFixed(1)} seconds',
+                    onChanged: (value) {
                       setState(() {
-                        _drawIntervalSeconds = value.toInt();
+                        _drawIntervalSeconds = value;
                       });
-
-                      // If game running, restart the number drawing with new duration:
-                      if (!isPaused) {
-                        // Pause current loop
-                        setState(() {
-                          isPaused = true;
-                        });
-
-                        // Slight delay to let loop exit
-                        await Future.delayed(const Duration(milliseconds: 100));
-
-                        // Restart loop with new duration
-                        startGenerating();
-                      }
                     },
                   ),
                 ],
@@ -422,6 +376,7 @@ class _BingoHomePageState extends State<BingoHomePage> {
                         },
 
                         onSearch: _openSelectedNumbersPage,
+                        onshuffle: _onShufflePage,
                       ),
 
                       const SizedBox(height: 5),
@@ -445,6 +400,7 @@ class _BingoHomePageState extends State<BingoHomePage> {
                                             ).orientation ==
                                             Orientation.portrait,
                                         useRowLayout: false,
+                                        isShuffling: isshuffled,
                                       ),
                                     ),
                                   ],
@@ -544,6 +500,7 @@ class _BingoHomePageState extends State<BingoHomePage> {
                     ],
                   ),
                 ),
+
                 if (_isLoading)
                   const Center(
                     child: CircularProgressIndicator(color: Colors.amber),
@@ -568,7 +525,7 @@ class _BingoHomePageState extends State<BingoHomePage> {
                           });
                           _audioPlayer.setVolume(isMuted ? 0.0 : 1.0);
                         },
-
+                        onshuffle: _onShufflePage,
                         onSearch: _openSelectedNumbersPage,
                       ),
 
@@ -668,12 +625,12 @@ class _BingoHomePageState extends State<BingoHomePage> {
                               MediaQuery.of(context).orientation ==
                               Orientation.portrait,
                           useRowLayout: true, // ✅ Using row layout
+                          isShuffling: isshuffled,
                         ),
                       ),
                     ],
                   ),
                 ),
-
                 if (_isLoading)
                   const Center(
                     child: CircularProgressIndicator(color: Colors.amber),
