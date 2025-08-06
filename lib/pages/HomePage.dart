@@ -36,7 +36,7 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
 
   void checkCartelaID(String value) {
     final enteredNumber = int.tryParse(value.trim());
-    if (enteredNumber == null || enteredNumber < 1 || enteredNumber > 80) {
+    if (enteredNumber == null || enteredNumber < 1 || enteredNumber > 200) {
       setState(() {
         takenNumberMessage = null;
       });
@@ -49,7 +49,8 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
       });
     } else {
       setState(() {
-        takenNumberMessage = " Number $enteredNumber is available.";
+        selectedNumbers.add(enteredNumber);
+        //takenNumberMessage = " Number $enteredNumber is available.";
       });
     }
   }

@@ -42,7 +42,7 @@ class _BingoHomePageState extends State<BingoHomePage> {
   bool hasStarted = false;
   double _playbackSpeed = 1.0;
 
-  bool isshuffled = true;
+  bool isshuffled = false;
 
   final TextEditingController _cardNumberController = TextEditingController();
 
@@ -120,16 +120,50 @@ class _BingoHomePageState extends State<BingoHomePage> {
     });
   }
 
+  // void togglePauseResume() async {
+  //   setState(() {
+  //     isPaused = !isPaused;
+  //   });
+
+  //   if (isPaused) {
+  //     // Stop any sound currently playing immediately
+  //     await _audioPlayer.stop();
+  //   } else {
+  //     // Resume number generation when unpaused
+  //     startGenerating();
+  //   }
+  // }
+
+  final AudioPlayer _sfxPlayer = AudioPlayer(); // Add this near _audioPlayer
+
   void togglePauseResume() async {
     setState(() {
       isPaused = !isPaused;
     });
 
     if (isPaused) {
-      // Stop any sound currently playing immediately
+      // 🔇 Stop number audio immediately
       await _audioPlayer.stop();
+
+      // 🔊 Play stop sound
+      try {
+        await _sfxPlayer.setAsset('assets/sounds/tvoice/tstop.mp3');
+        await _sfxPlayer.setVolume(isMuted ? 0.0 : 1.0);
+        await _sfxPlayer.play();
+      } catch (e) {
+        print('Error playing stop sound: $e');
+      }
     } else {
-      // Resume number generation when unpaused
+      // 🔊 Play start sound
+      try {
+        await _sfxPlayer.setAsset('assets/sounds/tvoice/tstart.wav');
+        await _sfxPlayer.setVolume(isMuted ? 0.0 : 1.0);
+        await _sfxPlayer.play();
+      } catch (e) {
+        print('Error playing start sound: $e');
+      }
+
+      // ▶️ Resume generation
       startGenerating();
     }
   }
@@ -189,6 +223,12 @@ class _BingoHomePageState extends State<BingoHomePage> {
     // startGenerating();
     _loadLanguage();
   }
+
+  void handleShuffleComplete() {
+  setState(() {
+    isshuffled = false;
+  });
+}
 
   String getBingoPrefix(int number) {
     if (number >= 1 && number <= 15) return 'b';
@@ -321,7 +361,7 @@ class _BingoHomePageState extends State<BingoHomePage> {
       appBar: AppBar(
         foregroundColor: Colors.white,
         backgroundColor: const Color(0xFF1E1E2E),
-        title: const Text("ቢንጎ ጨዋታ", style: TextStyle(color: Colors.white)),
+        title: const Text("Katbingo", style: TextStyle(color: Colors.white)),
         actions: [
           Text(languageOptions[selectedLanguageCode] ?? 'English'),
           SizedBox(width: 10),
@@ -401,6 +441,7 @@ class _BingoHomePageState extends State<BingoHomePage> {
                                             Orientation.portrait,
                                         useRowLayout: false,
                                         isShuffling: isshuffled,
+                                         onShuffleComplete: handleShuffleComplete,
                                       ),
                                     ),
                                   ],
@@ -624,8 +665,9 @@ class _BingoHomePageState extends State<BingoHomePage> {
                           isPortrait:
                               MediaQuery.of(context).orientation ==
                               Orientation.portrait,
-                          useRowLayout: true, // ✅ Using row layout
+                          useRowLayout: true, 
                           isShuffling: isshuffled,
+                           onShuffleComplete: handleShuffleComplete,
                         ),
                       ),
                     ],

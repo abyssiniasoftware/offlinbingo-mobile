@@ -71,11 +71,48 @@ class AppDrawer extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.settings),
-                title: const Text('Settings'),
+                leading: const Icon(Icons.dashboard),
+                title: const Text('Game Board'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.pushNamed(context, '/settings');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const WebViewPage(
+                        url: 'https://katbingo.net/dashboard',
+                      ),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.dashboard),
+                title: const Text('Bingo Cards'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const WebViewPage(
+                        url: 'https://katbingo.net/dashboard',
+                      ),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.dashboard),
+                title: const Text('Today Reports'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const WebViewPage(
+                        url: 'https://katbingo.net/dashboard',
+                      ),
+                    ),
+                  );
                 },
               ),
               const Divider(),

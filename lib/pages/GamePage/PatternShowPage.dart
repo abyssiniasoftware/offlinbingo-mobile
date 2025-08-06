@@ -13,9 +13,9 @@ class PatternShowPage extends StatefulWidget {
 class _PatternShowPageState extends State<PatternShowPage> {
   String? pattern1Name;
   String? pattern2Name;
-  String combinationType = 'Single'; // OR, AND, or Single
+  String combinationType = 'Single'; 
 
-  final List<String> combinationTypes = ['Single', 'OR', 'AND'];
+  final List<String> combinationTypes = ['OR','Single', 'AND'];
 
   List<int> cellIdToGridPos(String cellId) {
     if (cellId.length != 2) return [-1, -1];
@@ -99,33 +99,36 @@ class _PatternShowPageState extends State<PatternShowPage> {
         backgroundColor: Colors.blueGrey[900],
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: Column(
-          children: [
-            _buildDropdownCard("Pattern 1", pattern1Name!, (value) {
-              setState(() {
-                pattern1Name = value;
-              });
-            }),
-            if (combinationType != 'Single')
-              _buildDropdownCard("Pattern 2", pattern2Name!, (value) {
+      body: SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Column(
+            children: [
+              _buildDropdownCard("Pattern 1", pattern1Name!, (value) {
                 setState(() {
-                  pattern2Name = value;
+                  pattern1Name = value;
                 });
               }),
-            _buildDropdownCard("Combination", combinationType, (value) {
-              setState(() {
-                combinationType = value;
-              });
-            }, options: combinationTypes),
-            const SizedBox(height: 24),
-            _buildBingoHeader(),
-            const SizedBox(height: 8),
-            _buildGrid(positions),
-            const SizedBox(height: 20),
-            _buildSaveButton(),
-          ],
+              if (combinationType != 'Single')
+                _buildDropdownCard("Pattern 2", pattern2Name!, (value) {
+                  setState(() {
+                    pattern2Name = value;
+                  });
+                }),
+              _buildDropdownCard("Combination", combinationType, (value) {
+                setState(() {
+                  combinationType = value;
+                });
+              }, options: combinationTypes),
+              const SizedBox(height: 24),
+              _buildBingoHeader(),
+              const SizedBox(height: 8),
+              _buildGrid(positions),
+              const SizedBox(height: 20),
+              _buildSaveButton(),
+            ],
+          ),
         ),
       ),
     );

@@ -188,6 +188,7 @@ class BingoGrid extends StatefulWidget {
   final bool useRowLayout;
   final bool isPortrait;
   final bool isShuffling;
+  final VoidCallback? onShuffleComplete;
 
   const BingoGrid({
     super.key,
@@ -195,6 +196,8 @@ class BingoGrid extends StatefulWidget {
     required this.useRowLayout,
     required this.isPortrait,
     required this.isShuffling,
+    this.onShuffleComplete, // new callback
+
   });
 
   @override
@@ -235,27 +238,30 @@ class _BingoGridState extends State<BingoGrid> {
   }
 
   void _startShufflingAnimation() {
-    _isAnimating = true;
-    const duration = Duration(seconds: 3);
-    const tick = Duration(milliseconds: 200);
-    final random = Random();
+  _isAnimating = true;
+  const duration = Duration(seconds: 3);
+  const tick = Duration(milliseconds: 200);
+  final random = Random();
 
-    _shuffleTimer = Timer.periodic(tick, (timer) {
-      setState(() {
-        animatedColors = {
-          for (var i = 1; i <= 75; i++)
-            i: shuffleColors[random.nextInt(shuffleColors.length)],
-        };
-      });
+  _shuffleTimer = Timer.periodic(tick, (timer) {
+    setState(() {
+      animatedColors = {
+        for (var i = 1; i <= 75; i++)
+          i: shuffleColors[random.nextInt(shuffleColors.length)],
+      };
+    });
+  });
+
+  Future.delayed(duration, () {
+    _shuffleTimer?.cancel();
+    setState(() {
+      _isAnimating = false;
     });
 
-    Future.delayed(duration, () {
-      _shuffleTimer?.cancel();
-      setState(() {
-        _isAnimating = false;
-      });
-    });
-  }
+    // Notify parent that animation is complete
+    widget.onShuffleComplete?.call();
+  });
+}
 
   @override
   void dispose() {
