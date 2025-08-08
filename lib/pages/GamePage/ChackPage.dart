@@ -73,11 +73,11 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
         _winningPatternName = null;
         _isBlacklisted = true;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("🚫 This card is blacklisted due to previous loss."),
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(
+      //     content: Text("🚫 This card is blacklisted due to previous loss."),
+      //   ),
+      // );
       return;
     } else {
       _isBlacklisted = false;
@@ -539,12 +539,12 @@ class _SelectedNumbersPageState extends State<SelectedNumbersPage> {
                             _blacklist = blacklist;
                           });
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Card is already in blacklist."),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
+                          // ScaffoldMessenger.of(context).showSnackBar(
+                          //   const SnackBar(
+                          //     content: Text("Card is already in blacklist."),
+                          //     backgroundColor: Colors.orange,
+                          //   ),
+                          // );
                         }
                       },
                       style: ElevatedButton.styleFrom(

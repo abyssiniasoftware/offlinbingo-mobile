@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:offlinebingo/pages/Autho/login_page.dart';
+import 'package:offlinebingo/pages/GamePage/GameHistoryPage.DART';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:offlinebingo/pages/WebView/WebViewPage.dart';
 
@@ -71,7 +72,7 @@ class AppDrawer extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.dashboard),
+                leading: const Icon(Icons.border_all),
                 title: const Text('Game Board'),
                 onTap: () {
                   Navigator.pop(context);
@@ -86,7 +87,7 @@ class AppDrawer extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.dashboard),
+                leading: const Icon(Icons.card_travel),
                 title: const Text('Bingo Cards'),
                 onTap: () {
                   Navigator.pop(context);
@@ -101,7 +102,7 @@ class AppDrawer extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.dashboard),
+                leading: const Icon(Icons.report_gmailerrorred),
                 title: const Text('Today Reports'),
                 onTap: () {
                   Navigator.pop(context);
@@ -115,6 +116,20 @@ class AppDrawer extends StatelessWidget {
                   );
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.history),
+                title: const Text('Game History'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const GameHistoryPage(),
+                    ),
+                  );
+                },
+              ),
+              //GameHistoryPage
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),

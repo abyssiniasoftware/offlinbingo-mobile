@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:offlinebingo/config/languageLists.dart';
 import 'package:offlinebingo/pages/GamePage.dart';
@@ -55,9 +57,88 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
     }
   }
 
+  // void startGame() async {
+  //   if (selectedNumbers.isEmpty) {
+  //     // Optional: show error if no numbers selected
+  //     showDialog(
+  //       context: context,
+  //       builder: (_) => AlertDialog(
+  //         backgroundColor: Colors.grey[900],
+  //         title: const Text("Error", style: TextStyle(color: Colors.white)),
+  //         content: const Text(
+  //           "Please select at least one number.",
+  //           style: TextStyle(color: Colors.white70),
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.pop(context),
+  //             child: const Text("OK", style: TextStyle(color: Colors.amber)),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //     return;
+  //   }
+
+  //   final cutAmount = int.tryParse(cutAmountPercent.replaceAll('%', '')) ?? 10;
+
+  //   setState(() {
+  //     _isLoading =
+  //         true; // You will need to add this boolean in your State class
+  //   });
+
+  //   final gameProvider = Provider.of<GameProvider>(context, listen: false);
+
+  //   bool result = true;
+  //   // try {
+  //   //   result = await gameProvider.createGame(
+  //   //     stakeAmount: betAmount,
+  //   //     numberOfPlayers: selectedNumbers.length,
+  //   //     cutAmountPercent: cutAmount,
+  //   //     cartela: selectedNumbers.length,
+  //   //   );
+  //   // } catch (e) {
+  //   //   print("Error creating game: $e");
+  //   // }
+
+  //   setState(() {
+  //     _isLoading = false;
+  //   });
+
+  //   if (result) {
+  //     _loadBalance();
+  //     SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  //     double currentBalance = prefs.getDouble('package') ?? 0.0;
+  //     double newBalance =
+  //         currentBalance -
+  //         (betAmount.toDouble() * cutAmount * selectedNumbers.length);
+
+  //     // Prevent negative balance (optional)
+  //     if (newBalance < 0) newBalance = 0;
+
+  //     await prefs.setDouble('package', newBalance);
+  //     // Navigate to BingoHomePage only on success
+
+  //     await prefs.remove("blacklisted_card_ids");
+  //     ScaffoldMessenger.of(
+  //       context,
+  //     ).showSnackBar(const SnackBar(content: Text("🧹 Blacklist cleared.")));
+  //     Navigator.push(
+  //       context,
+  //       MaterialPageRoute(
+  //         builder: (context) => BingoHomePage(
+  //           selectedNumbers: selectedNumbers,
+  //           amount: betAmount,
+  //           cutAmountPercent: cutAmount,
+  //         ),
+  //       ),
+  //     );
+  //   }
+  // }
+
   void startGame() async {
     if (selectedNumbers.isEmpty) {
-      // Optional: show error if no numbers selected
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -80,24 +161,56 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
 
     final cutAmount = int.tryParse(cutAmountPercent.replaceAll('%', '')) ?? 10;
 
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    double currentBalance = prefs.getDouble('package') ?? 0.0;
+
+    // Calculate total cost for the game
+    double totalCost =
+        (betAmount.toDouble() * cutAmount * (selectedNumbers.length)) / (100);
+
+    // Check if balance is sufficient
+    if (currentBalance < totalCost) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text(
+            "Insufficient Balance",
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            "Your balance ($currentBalance) is insufficient to play this game which costs $totalCost.",
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK", style: TextStyle(color: Colors.amber)),
+            ),
+          ],
+        ),
+      );
+      return; // Stop here if not enough balance
+    }
+
     setState(() {
-      _isLoading =
-          true; // You will need to add this boolean in your State class
+      _isLoading = true;
     });
 
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
 
-    bool result = false;
-    try {
-      result = await gameProvider.createGame(
-        stakeAmount: betAmount,
-        numberOfPlayers: selectedNumbers.length,
-        cutAmountPercent: cutAmount,
-        cartela: selectedNumbers.length,
-      );
-    } catch (e) {
-      print("Error creating game: $e");
-    }
+    bool result = true;
+    // Uncomment when backend ready:
+    // try {
+    //   result = await gameProvider.createGame(
+    //     stakeAmount: betAmount,
+    //     numberOfPlayers: selectedNumbers.length,
+    //     cutAmountPercent: cutAmount,
+    //     cartela: selectedNumbers.length,
+    //   );
+    // } catch (e) {
+    //   print("Error creating game: $e");
+    // }
 
     setState(() {
       _isLoading = false;
@@ -105,21 +218,32 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
 
     if (result) {
       _loadBalance();
-      SharedPreferences prefs = await SharedPreferences.getInstance();
 
-      double currentBalance = prefs.getDouble('package') ?? 0.0;
-      double newBalance = currentBalance - betAmount.toDouble();
+      double newBalance = currentBalance - totalCost;
 
-      // Prevent negative balance (optional)
       if (newBalance < 0) newBalance = 0;
-
       await prefs.setDouble('package', newBalance);
-      // Navigate to BingoHomePage only on success
 
+      // ✅ Clear blacklist
       await prefs.remove("blacklisted_card_ids");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("🧹 Blacklist cleared.")));
+      // ScaffoldMessenger.of(
+      //   context,
+      // ).showSnackBar(const SnackBar(content: Text("🧹 Blacklist cleared.")));
+
+      // ✅ Save game history
+      List<String> historyList = prefs.getStringList("gameHistory") ?? [];
+
+      Map<String, dynamic> newEntry = {
+        "stakeAmount": betAmount,
+        "numberOfPlayers": selectedNumbers.length,
+        "cutAmountPercent": cutAmount,
+        "dateTime": DateTime.now().toIso8601String(),
+        "balance": newBalance,
+      };
+
+      historyList.add(jsonEncode(newEntry));
+      await prefs.setStringList("gameHistory", historyList);
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -130,25 +254,11 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
           ),
         ),
       );
-    } else {
-      // Show error dialog on failure
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text("❌ Failed", style: TextStyle(color: Colors.white)),
-          content: const Text(
-            "Failed to create game. Please try again.",
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("OK", style: TextStyle(color: Colors.amber)),
-            ),
-          ],
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(
+      //     content: Text("${newBalance} cleared.${totalCost}  ${cutAmount}"),
+      //   ),
+      // );
     }
   }
 
@@ -354,12 +464,12 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
                               await gameProvider
                                   .fetchCardNumbers(); // Refresh cards
                             } catch (e) {
-                              scaffold.showSnackBar(
-                                SnackBar(
-                                  content: Text("Error refreshing: $e"),
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
+                              // scaffold.showSnackBar(
+                              //   SnackBar(
+                              //     content: Text("Error refreshing: $e"),
+                              //     duration: const Duration(seconds: 2),
+                              //   ),
+                              // );
                             }
                           },
                         ),
@@ -494,8 +604,12 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
               const SizedBox(width: 8),
               IconButton(
                 onPressed: () => setState(() {
-                  if (betAmount > 0) betAmount = betAmount - 5;
+                  if (betAmount > 10) {
+                    betAmount = betAmount - 5;
+                  }
+                  // else do nothing — minimum is 10
                 }),
+
                 icon: const Icon(Icons.remove, color: Colors.white),
               ),
               Text(
