@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,13 +30,24 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setString('userId', result['id'] ?? '');
       await prefs.setString('houseId', result['houseId'] ?? '');
       // await prefs.setInt('package', (result['package'] ?? 0).toInt());
-      await prefs.setDouble(
-        'package',
-        (result['package'] is int)
-            ? (result['package'] as int).toDouble()
-            : (result['package'] ?? 0.0) as double,
-      );
-
+      // await prefs.setDouble(
+      //   'package',
+      //   (result['package'] is int)
+      //       ? (result['package'] as int).toDouble()
+      //       : (result['package'] ?? 0.0) as double,
+      // );
+      await prefs.setDouble('package', () {
+        final value = result['package'];
+        if (value == null) return 0.0;
+        if (value is int) return value.toDouble();
+        if (value is double) return value;
+        // If it's some other type, try parsing or fallback to 0.0
+        try {
+          return double.parse(value.toString());
+        } catch (_) {
+          return 0.0;
+        }
+      }());
 
       notifyListeners();
       return null; // success
@@ -120,6 +132,51 @@ class AuthProvider extends ChangeNotifier {
     if (savedUsername != null && savedPassword != null) {
       // Try login again
       await login(savedUsername, savedPassword);
+    }
+  }
+
+  Future<Map<String, dynamic>?> fetchUserBalance() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final userId = prefs.getString('userId');
+    double package = prefs.getDouble('package') ?? 0.0;
+
+    if (token == null || userId == null) {
+      debugPrint("⚠️ Token or UserID missing");
+      return null;
+    }
+
+    final url = Uri.parse(
+      'https://backend2.katbingo.net/api/user/user-balance',
+    );
+
+    final body = jsonEncode({'userId': userId, 'balance': package});
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      debugPrint("📨 User balance fetch status: ${response.statusCode}");
+      debugPrint("📥 Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+
+        if (data['balance'] != null) {
+          await prefs.setDouble('package', (data['balance'] as num).toDouble());
+        }
+
+        return data;
+      } else {
+        debugPrint("❌ Failed to fetch user balance: ${response.statusCode}");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("❌ Error fetching user balance: $e");
+      return null;
     }
   }
 }

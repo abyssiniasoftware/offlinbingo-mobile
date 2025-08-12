@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:offlinebingo/pages/HomePage.dart';
 import 'package:offlinebingo/providers/autho_provider.dart';
 import 'package:provider/provider.dart';
 import '../../config/constants.dart';
@@ -16,14 +17,33 @@ class _LoginScreenState extends State<LoginScreen> {
   String? error;
   bool loading = false;
 
+  // void login() async {
+  //   setState(() => loading = true);
+  //   final auth = Provider.of<AuthProvider>(context, listen: false);
+  //   final message = await auth.login(username.text, passwordController.text);
+  //   setState(() {
+  //     loading = false;
+  //     error = message;
+  //   });
+  // }
   void login() async {
     setState(() => loading = true);
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final message = await auth.login(username.text, passwordController.text);
-    setState(() {
-      loading = false;
-      error = message;
-    });
+    final result = await auth.login(username.text, passwordController.text);
+
+    setState(() => loading = false);
+
+    if (result == null) {
+      // Success: Navigate to NumberSelectionScreen or HomePage
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => NumberSelectionScreen()),
+      );
+    } else {
+      // Failure: Show error message
+      setState(() {
+        error = result;
+      });
+    }
   }
 
   @override
@@ -93,6 +113,31 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     filled: true,
                     fillColor: Colors.grey[800],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                // Help phone number container below login card
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.phone, color: Colors.amber),
+                      SizedBox(width: 8),
+                      Text(
+                        "Need help? Call: +251 911 111 111",
+                        style: TextStyle(
+                          color: Colors.amber,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),

@@ -128,7 +128,7 @@ class GameProvider extends ChangeNotifier {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         currentCard = data;
-        print("currentcard"+currentCard.toString());
+        print("currentcard" + currentCard.toString());
         notifyListeners();
       } else {
         currentCard = {};
@@ -138,6 +138,62 @@ class GameProvider extends ChangeNotifier {
       debugPrint("❌ Error fetching card by ID: $e");
       currentCard = {};
       notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>?> fetchUserBalance() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final userId = prefs.getString('userId');
+    double package = prefs.getDouble('package') ?? 0.0;
+
+    if (token == null || userId == null) {
+      debugPrint("⚠️ Token or UserID missing");
+      return null;
+    }
+
+    final url = Uri.parse(
+      'https://backend2.katbingo.net/api/user/user-balance',
+    );
+
+    final body = jsonEncode({'userId': userId, 'balance': package});
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json', 'x-auth-token': token},
+        body: body,
+      );
+
+      debugPrint("📨 User balance fetch status: ${response.statusCode}");
+      debugPrint("📥 Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        print("resposnse" + response.body);
+        final Map<String, dynamic> data = jsonDecode(response.body);
+
+        // Check if balance exists and update package in prefs
+        if (data.containsKey('balance')) {
+          final newBalance = (data['balance'] is int)
+              ? (data['balance'] as int).toDouble()
+              : (data['balance'] is double)
+              ? data['balance']
+              : 0.0;
+
+          if (newBalance != package) {
+            await prefs.setDouble('package', newBalance);
+            debugPrint("✅ Package balance updated to $newBalance");
+          }
+        }
+
+        return data;
+      } else {
+        debugPrint("❌ Failed to fetch user balance: ${response.statusCode}");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("❌ Error fetching user balance: $e");
+      return null;
     }
   }
 }

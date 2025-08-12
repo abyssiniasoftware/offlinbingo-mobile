@@ -428,6 +428,53 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
+                      // Container(
+                      //   decoration: BoxDecoration(
+                      //     color: Colors.amber.withOpacity(0.15),
+                      //     borderRadius: BorderRadius.circular(8),
+                      //   ),
+                      //   child: IconButton(
+                      //     icon: const Icon(
+                      //       Icons.refresh,
+                      //       color: Colors.amber,
+                      //       size: 20,
+                      //     ),
+                      //     tooltip: 'Refresh Balance',
+                      //     onPressed: () async {
+                      //       final scaffold = ScaffoldMessenger.of(context);
+                      //       try {
+                      //         scaffold.showSnackBar(
+                      //           const SnackBar(
+                      //             content: Text("Refreshing..."),
+                      //             duration: Duration(milliseconds: 800),
+                      //           ),
+                      //         );
+
+                      //         final authProvider = Provider.of<AuthProvider>(
+                      //           context,
+                      //           listen: false,
+                      //         );
+                      //         final gameProvider = Provider.of<GameProvider>(
+                      //           context,
+                      //           listen: false,
+                      //         );
+
+                      //         await authProvider.autoLogin();
+                      //         _loadBalance(); // Refresh local balance
+                      //         await gameProvider
+                      //             .fetchCardNumbers(); // Refresh cards
+                      //         await authProvider.fetchUserBalance();
+                      //       } catch (e) {
+                      //         // scaffold.showSnackBar(
+                      //         //   SnackBar(
+                      //         //     content: Text("Error refreshing: $e"),
+                      //         //     duration: const Duration(seconds: 2),
+                      //         //   ),
+                      //         // );
+                      //       }
+                      //     },
+                      //   ),
+                      // ),
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.amber.withOpacity(0.15),
@@ -459,17 +506,29 @@ class _NumberSelectionScreenState extends State<NumberSelectionScreen> {
                                 listen: false,
                               );
 
-                              await authProvider.autoLogin();
-                              _loadBalance(); // Refresh local balance
+                              await authProvider
+                                  .autoLogin(); // or your auth logic
+
+                              // Use the updated fetchUserBalance here and update local state:
+                              final balanceData = await authProvider
+                                  .fetchUserBalance();
+
+                              if (balanceData != null) {
+                                // You could update your UI or provider balance here if needed
+                                // For example:
+                                // authProvider.updateBalance(balanceData['balance']);
+                              }
+
+                              _loadBalance(); // Your existing method to reload balance UI locally
                               await gameProvider
                                   .fetchCardNumbers(); // Refresh cards
                             } catch (e) {
-                              // scaffold.showSnackBar(
-                              //   SnackBar(
-                              //     content: Text("Error refreshing: $e"),
-                              //     duration: const Duration(seconds: 2),
-                              //   ),
-                              // );
+                              scaffold.showSnackBar(
+                                SnackBar(
+                                  content: Text("Error refreshing: $e"),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
                             }
                           },
                         ),
